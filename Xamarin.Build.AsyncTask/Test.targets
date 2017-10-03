@@ -1,0 +1,44 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" >
+
+  <PropertyGroup>
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+  </PropertyGroup>
+
+  <Target Name="Test" >
+    <Error Condition="!Exists('$(OutputPath)$(AssemblyName).dll')" Text="Run Build first. '$(OutputPath)$(AssemblyName).dll' not found." />
+    <AsyncMessage Text="Hello Async World!" />
+  </Target>
+
+  <UsingTask TaskName="AsyncMessage" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Text Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Reference Include="$(OutputPath)$(AssemblyName).dll" />
+      <Reference Include="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll"/>
+      <Reference Include="$(MSBuildToolsPath)\Microsoft.Build.Utilities.Core.dll"/>
+      <Reference Include="System.Threading.Tasks"/>
+      <Code Type="Class" Language="cs">
+        <![CDATA[
+        public class AsyncMessage : Xamarin.Build.AsyncTask
+        {
+          public string Text { get; set; }
+
+          public override bool Execute()
+          {
+            System.Threading.Tasks.Task.Run(async () =>
+            {
+              await System.Threading.Tasks.Task.Delay(5000);
+              LogMessage(Text);
+	            Complete();
+            });            
+
+            return base.Execute();
+          }
+        }
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+</Project>

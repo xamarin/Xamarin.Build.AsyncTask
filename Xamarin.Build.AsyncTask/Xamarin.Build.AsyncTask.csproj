@@ -24,9 +24,9 @@
     <PackageReference Include="Microsoft.Build.Tasks.Core" Version="14.3.0" />
     <PackageReference Include="Microsoft.Build.Utilities.Core" Version="14.3.0" />
 
-    <PackageReference Include="NuGet.Build.Packaging" Version="*" />
-    <PackageReference Include="GitInfo" Version="*" />
-    <PackageReference Include="SourceLink.Create.GitHub" Version="*" />
+    <PackageReference Include="NuGet.Build.Packaging" Version="*" PrivateAssets="all" />
+    <PackageReference Include="GitInfo" Version="*" PrivateAssets="all" />
+    <PackageReference Include="SourceLink.Create.GitHub" Version="*" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
@@ -34,6 +34,10 @@
     <PackageFile Include="$(OutputPath)$(AssemblyName).dll" Kind="lib" />
     <PackageFile Include="$(OutputPath)$(AssemblyName).pdb" Kind="lib" />
     <PackageFile Include="$(OutputPath)$(AssemblyName).xml" Kind="lib" />
+    <PackageFile Include="Readme.txt" />
+    <PackageFile Include="Microsoft.Build.Tasks.Core;Microsoft.Build.Utilities.Core" Version="14.3.0">
+      <Kind>Dependency</Kind>
+    </PackageFile>
   </ItemGroup>
 
   <Target Name="SetPackageVersion" DependsOnTargets="GitVersion" BeforeTargets="GetPackageVersion">
@@ -41,5 +45,7 @@
       <PackageVersion>$(GitSemVerMajor).$(GitSemVerMinor).$(GitSemVerPatch)</PackageVersion>
     </PropertyGroup>
   </Target>
+
+  <Import Project="Test.targets" />
 
 </Project>
