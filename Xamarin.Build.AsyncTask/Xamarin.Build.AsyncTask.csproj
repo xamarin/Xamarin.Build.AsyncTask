@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+
+    <GenerateAssemblyVersionAttribute>false</GenerateAssemblyVersionAttribute>
+    <GenerateAssemblyFileVersionAttribute>false</GenerateAssemblyFileVersionAttribute>
+    <GenerateAssemblyInformationalVersionAttribute>false</GenerateAssemblyInformationalVersionAttribute>
+    <DocumentationFile>$(OutputPath)$(AssemblyName).xml</DocumentationFile>
+    <NoWarn>1701;1702;1705;1591</NoWarn>
+
+    <PackageId>Xamarin.Build.AsyncTask</PackageId>
+    <PackageVersion>0.1.0</PackageVersion>
+
+    <Title>$(PackageId)</Title>
+    <Description>$(PackageId)</Description>
+    <Summary>Supports MSBuild 14+.</Summary>
+
+    <PackOnBuild>true</PackOnBuild>
+    <InferPackageContents>false</InferPackageContents>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Build.Tasks.Core" Version="14.3.0" />
+    <PackageReference Include="Microsoft.Build.Utilities.Core" Version="14.3.0" />
+
+    <PackageReference Include="NuGet.Build.Packaging" Version="*" />
+    <PackageReference Include="GitInfo" Version="*" />
+    <PackageReference Include="SourceLink.Create.GitHub" Version="*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageFile Include="Xamarin.Build.AsyncTask.props" Kind="build" />
+    <PackageFile Include="$(OutputPath)$(AssemblyName).dll" Kind="lib" />
+    <PackageFile Include="$(OutputPath)$(AssemblyName).pdb" Kind="lib" />
+    <PackageFile Include="$(OutputPath)$(AssemblyName).xml" Kind="lib" />
+  </ItemGroup>
+
+  <Target Name="SetPackageVersion" DependsOnTargets="GitVersion" BeforeTargets="GetPackageVersion">
+    <PropertyGroup>
+      <PackageVersion>$(GitSemVerMajor).$(GitSemVerMinor).$(GitSemVerPatch)</PackageVersion>
+    </PropertyGroup>
+  </Target>
+
+</Project>
