@@ -16,6 +16,8 @@
     <Description>$(PackageId)</Description>
     <Summary>Supports MSBuild 14+.</Summary>
     <PackageReleaseNotes>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)Readme.txt'))</PackageReleaseNotes>
+    <PackageProjectUrl>https://github.com/xamarin/Xamarin.Build.AsyncTask</PackageProjectUrl>
+    <PackageLicenseUrl>https://raw.githubusercontent.com/xamarin/Xamarin.Build.AsyncTask/master/LICENSE</PackageLicenseUrl>
 
     <PackOnBuild>true</PackOnBuild>
     <InferPackageContents>false</InferPackageContents>
