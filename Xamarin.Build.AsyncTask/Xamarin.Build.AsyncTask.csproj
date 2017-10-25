@@ -15,6 +15,7 @@
     <Title>$(PackageId)</Title>
     <Description>$(PackageId)</Description>
     <Summary>Supports MSBuild 14+.</Summary>
+    <PackageReleaseNotes>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)Readme.txt'))</PackageReleaseNotes>
 
     <PackOnBuild>true</PackOnBuild>
     <InferPackageContents>false</InferPackageContents>
