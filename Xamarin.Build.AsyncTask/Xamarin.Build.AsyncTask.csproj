@@ -27,6 +27,7 @@
     <PackageReference Include="Microsoft.Build.Tasks.Core" Version="15.6.82" />
     <PackageReference Include="Microsoft.Build.Utilities.Core" Version="15.6.82" />
 
+    <PackageReference Include="System.Diagnostics.StackTrace" Version="4.3.0" PrivateAssets="all" />
     <PackageReference Include="NuGet.Build.Packaging" Version="*" PrivateAssets="all" />
     <PackageReference Include="GitInfo" Version="*" PrivateAssets="all" />
     <PackageReference Include="SourceLink.Create.GitHub" Version="*" PrivateAssets="all" />
