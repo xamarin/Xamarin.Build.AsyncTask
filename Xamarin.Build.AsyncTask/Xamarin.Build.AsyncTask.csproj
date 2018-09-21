@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard1.3</TargetFramework>
@@ -15,9 +15,12 @@
     <Title>$(PackageId)</Title>
     <Description>$(PackageId)</Description>
     <Summary>Supports MSBuild 14+.</Summary>
+    <Authors>Microsoft</Authors>
+    <Owners>microsoft xamarin</Owners>
     <PackageReleaseNotes>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)Readme.txt'))</PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/xamarin/Xamarin.Build.AsyncTask</PackageProjectUrl>
     <PackageLicenseUrl>https://raw.githubusercontent.com/xamarin/Xamarin.Build.AsyncTask/master/LICENSE</PackageLicenseUrl>
+    <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
 
     <PackOnBuild>true</PackOnBuild>
     <InferPackageContents>false</InferPackageContents>
