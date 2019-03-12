@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using Microsoft.Build.Utilities;
 using Microsoft.Build.Framework;
 using System.Threading;
@@ -12,209 +13,165 @@ namespace Xamarin.Build
     /// Base class for tasks that need long-running cancellable asynchronous tasks 
     /// that don't block the UI thread in the IDE.
     /// </summary>
-    public abstract class AsyncTask : Task, ICancelableTask
-    {
-        readonly CancellationTokenSource tcs = new CancellationTokenSource();
-        readonly Queue logMessageQueue = new Queue();
-        readonly Queue warningMessageQueue = new Queue();
-        readonly Queue errorMessageQueue = new Queue();
+    public class AsyncTask : CancelableTask {
 
-        readonly ManualResetEvent logDataAvailable = new ManualResetEvent(false);
-        readonly ManualResetEvent errorDataAvailable = new ManualResetEvent(false);
-        readonly ManualResetEvent warningDataAvailable = new ManualResetEvent(false);
-        readonly ManualResetEvent taskCancelled = new ManualResetEvent(false);
-        readonly ManualResetEvent completed = new ManualResetEvent(false);
-
+        Queue logMessageQueue =new Queue ();
+        Queue warningMessageQueue = new Queue ();
+        Queue errorMessageQueue = new Queue ();
+        Queue customMessageQueue = new Queue ();
+        ManualResetEvent logDataAvailable = new ManualResetEvent (false);
+        ManualResetEvent errorDataAvailable = new ManualResetEvent (false);
+        ManualResetEvent warningDataAvailable = new ManualResetEvent (false);
+        ManualResetEvent customDataAvailable = new ManualResetEvent (false);
+        ManualResetEvent taskCancelled = new ManualResetEvent (false);
+        ManualResetEvent completed = new ManualResetEvent (false);
         bool isRunning = true;
-        object _eventlock = new object();
+        object _eventlock = new object ();
         int UIThreadId = 0;
 
-        /// <summary>
-        /// The cancellation token to notify the cancellation requests
-        /// </summary>
-        public CancellationToken Token { get { return tcs.Token; } }
+        protected struct OutputLine {
+            public string Line;
+            public bool StdError;
 
-        /// <summary>
+            public OutputLine (string line, bool stdError)
+            {
+                Line = line;
+                StdError = stdError;
+            }
+        }
+
+                /// <summary>
         /// Indicates if the task will yield the node during tool execution.
         /// </summary>
         public bool YieldDuringToolExecution { get; set; }
 
-        /// <summary>
-        /// Initializes the task.
-        /// </summary>
-        public AsyncTask()
-        {
-            YieldDuringToolExecution = false;
-            UIThreadId = Thread.CurrentThread.ManagedThreadId;
-        }
+        protected string WorkingDirectory { get; private set; } 
 
-        /// <summary>
-        /// Requests cancellation of the task execution.
-        /// </summary>
-        public void Cancel()
-        {
-            taskCancelled.Set();
-        }
-
-        /// <summary>
-        /// Completes the task execution.
-        /// </summary>
-        public void Complete()
-        {
-            completed.Set();
-        }
-
-        /// <summary>
-        /// Waits until execution completes and returns <c>true</c> if no 
-        /// errors were logged.
-        /// </summary>
-        public override bool Execute()
-        {
-            WaitForCompletion();
-#pragma warning disable 618
-            return !Log.HasLoggedErrors;
-#pragma warning restore 618
-        }
-
-        [Obsolete("Do not use the Log.LogXXXX from within your Async task as it will Lock the Visual Studio UI. Use the this.LogXXXX methods instead.")]
+        [Obsolete ("Do not use the Log.LogXXXX from within your Async task as it will Lock the Visual Studio UI. Use the this.LogXXXX methods instead.")]
         private new TaskLoggingHelper Log
         {
             get { return base.Log; }
         }
 
-        public void LogDebugTaskItems(string message, string[] items)
+        /// <summary>
+        /// Initializes the task.
+        /// </summary>
+        public AsyncTask ()
         {
-            LogDebugMessage(message);
+            YieldDuringToolExecution = false;
+            UIThreadId = Thread.CurrentThread.ManagedThreadId;
+            WorkingDirectory = Directory.GetCurrentDirectory ();
+        }
+
+        public override void Cancel ()
+        {
+            taskCancelled.Set ();
+        }
+
+        protected void Complete (System.Threading.Tasks.Task task)
+        {
+            if (task.Exception != null) {
+                var ex = task.Exception.GetBaseException ();
+                LogError (ex.Message + Environment.NewLine + ex.StackTrace);
+            }
+            Complete ();
+        }
+
+        public void Complete()
+        {
+            completed.Set ();
+        }
+
+        public void LogDebugTaskItems (string message, string[] items)
+        {
+            LogDebugMessage (message);
 
             if (items == null)
                 return;
 
             foreach (var item in items)
-                LogDebugMessage("    {0}", item);
+                LogDebugMessage ("    {0}", item);
         }
 
-        public void LogDebugTaskItems(string message, ITaskItem[] items)
+        public void LogDebugTaskItems (string message, ITaskItem[] items)
         {
-            LogDebugMessage(message);
+            LogDebugMessage (message);
 
             if (items == null)
                 return;
 
             foreach (var item in items)
-                LogDebugMessage("    {0}", item.ItemSpec);
+                LogDebugMessage ("    {0}", item.ItemSpec);
         }
 
-        public void LogMessage(string message)
+        public void LogMessage (string message)
         {
-            LogMessage(message, importance: MessageImportance.Normal);
+            LogMessage (message, importance: MessageImportance.Normal);
         }
 
-        public void LogMessage(string message, params object[] messageArgs)
+        public void LogMessage (string message, params object[] messageArgs)
         {
-            LogMessage(string.Format(message, messageArgs));
+            LogMessage (string.Format (message, messageArgs));
         }
 
-        public void LogDebugMessage(string message)
+        public void LogDebugMessage (string message)
         {
-            LogMessage(message, importance: MessageImportance.Low);
+            LogMessage (message , importance: MessageImportance.Low);
         }
 
-        public void LogDebugMessage(string message, params object[] messageArgs)
+        public void LogDebugMessage (string message, params object[] messageArgs)
         {
-            LogMessage(string.Format(message, messageArgs), importance: MessageImportance.Low);
+            LogMessage (string.Format (message, messageArgs), importance: MessageImportance.Low);
         }
 
-        public void LogMessage(string message, MessageImportance importance = MessageImportance.Normal)
+        public void LogMessage (string message, MessageImportance importance = MessageImportance.Normal)
         {
-            if (UIThreadId == Thread.CurrentThread.ManagedThreadId)
-            {
-#pragma warning disable 618
-                Log.LogMessage(importance, message);
+            if (UIThreadId == Thread.CurrentThread.ManagedThreadId) {
+                #pragma warning disable 618
+                Log.LogMessage (importance, message);
                 return;
-#pragma warning restore 618
+                #pragma warning restore 618
             }
 
-            lock (logMessageQueue.SyncRoot)
-            {
-                logMessageQueue.Enqueue(new BuildMessageEventArgs(
+            var data = new BuildMessageEventArgs (
                     message: message,
                     helpKeyword: null,
                     senderName: null,
                     importance: importance
-                ));
-                lock (_eventlock)
-                {
-                    if (isRunning)
-                        logDataAvailable.Set();
-                }
-            }
+            );
+            EnqueueMessage (logMessageQueue, data, logDataAvailable);
         }
 
-        public void LogError(string message)
+        public void LogError (string message)
         {
-            LogError(code: null, message: message, file: null, lineNumber: 0);
+            LogCodedError (code: null, message: message, file: null, lineNumber: 0);
         }
 
-        public void LogError(string message, params object[] messageArgs)
+        public void LogError (string message, params object [] messageArgs)
         {
-            LogError(code: null, message: string.Format(message, messageArgs));
+            LogCodedError (code: null, message: string.Format (message, messageArgs));
         }
 
-        public void LogErrorFromException(Exception exception)
+        public void LogCodedError (string code, string message)
         {
-            if (UIThreadId == Thread.CurrentThread.ManagedThreadId)
-            {
-#pragma warning disable 618
-                Log.LogErrorFromException(exception);
-                return;
-#pragma warning restore 618
-            }
-
-            StackFrame exceptionFrame = null;
-            try
-            {
-                exceptionFrame = new StackTrace(exception, true)?.GetFrames()?.FirstOrDefault();
-            }
-            catch { }
-
-            lock (errorMessageQueue.SyncRoot)
-            {
-                errorMessageQueue.Enqueue(new BuildErrorEventArgs(
-                    subcategory: null,
-                    code: null,
-                    file: exceptionFrame?.GetFileName(),
-                    lineNumber: exceptionFrame?.GetFileLineNumber() ?? 0,
-                    columnNumber: exceptionFrame?.GetFileColumnNumber() ?? 0,
-                    endLineNumber: 0,
-                    endColumnNumber: 0,
-                    message: exception.Message,
-                    helpKeyword: null,
-                    senderName: null
-                ));
-                lock (_eventlock)
-                {
-                    if (isRunning)
-                        errorDataAvailable.Set();
-                }
-            }
+            LogCodedError (code: code, message: message, file: null, lineNumber: 0);
         }
 
-        public void LogCodedError(string code, string message)
+        public void LogCodedError (string code, string message, params object [] messageArgs)
         {
-            LogError(code: code, message: message, file: null, lineNumber: 0);
+            LogCodedError (code: code, message: string.Format (message, messageArgs), file: null, lineNumber: 0);
         }
 
-        public void LogCodedError(string code, string message, params object[] messageArgs)
+        public void LogCodedError (string code, string file, int lineNumber, string message, params object [] messageArgs)
         {
-            LogError(code: code, message: string.Format(message, messageArgs), file: null, lineNumber: 0);
+            LogCodedError (code: code, message: string.Format (message, messageArgs), file: file, lineNumber: lineNumber);
         }
 
-        public void LogError(string code, string message, string file = null, int lineNumber = 0)
+        public void LogCodedError (string code, string message, string file, int lineNumber)
         {
-            if (UIThreadId == Thread.CurrentThread.ManagedThreadId)
-            {
-#pragma warning disable 618
-                Log.LogError(
+            if (UIThreadId == Thread.CurrentThread.ManagedThreadId) {
+                #pragma warning disable 618
+                Log.LogError (
                     subcategory: null,
                     errorCode: code,
                     helpKeyword: null,
@@ -226,12 +183,10 @@ namespace Xamarin.Build
                     message: message
                 );
                 return;
-#pragma warning restore 618
+                #pragma warning restore 618
             }
 
-            lock (errorMessageQueue.SyncRoot)
-            {
-                errorMessageQueue.Enqueue(new BuildErrorEventArgs(
+            var data = new BuildErrorEventArgs (
                     subcategory: null,
                     code: code,
                     file: file,
@@ -242,156 +197,201 @@ namespace Xamarin.Build
                     message: message,
                     helpKeyword: null,
                     senderName: null
-                ));
-                lock (_eventlock)
-                {
-                    if (isRunning)
-                        errorDataAvailable.Set();
-                }
-            }
+            );
+            EnqueueMessage (errorMessageQueue, data, errorDataAvailable);
         }
 
-        public void LogWarning(string message, params object[] messageArgs)
+        public void LogWarning (string message)
         {
-            LogWarning(string.Format(message, messageArgs));
+            LogCodedWarning (code: null, message: message, file: null, lineNumber: 0);
         }
 
-        public void LogWarning(string message)
+        public void LogWarning (string message, params object[] messageArgs)
         {
-            if (UIThreadId == Thread.CurrentThread.ManagedThreadId)
-            {
-#pragma warning disable 618
-                Log.LogWarning(message);
-                return;
-#pragma warning restore 618
-            }
+            LogCodedWarning (code: null, message: string.Format (message, messageArgs));
+        }
 
-            lock (warningMessageQueue.SyncRoot)
-            {
-                warningMessageQueue.Enqueue(new BuildWarningEventArgs(
+        public void LogCodedWarning (string code, string message)
+        {
+            LogCodedWarning (code: code, message: message, file: null, lineNumber: 0);
+        }
+
+        public void LogCodedWarning (string code, string message, params object [] messageArgs)
+        {
+            LogCodedWarning (code: code, message: string.Format (message, messageArgs), file: null, lineNumber: 0);
+        }
+
+        public void LogCodedWarning (string code, string file, int lineNumber, string message, params object [] messageArgs)
+        {
+            LogCodedWarning (code: code, message: string.Format (message, messageArgs), file: file, lineNumber: lineNumber);
+        }
+
+        public void LogCodedWarning (string code, string message, string file, int lineNumber)
+        {
+            if (UIThreadId == Thread.CurrentThread.ManagedThreadId) {
+                #pragma warning disable 618
+                Log.LogWarning (
                     subcategory: null,
-                    code: null,
-                    file: null,
-                    lineNumber: 0,
+                    warningCode: code,
+                    helpKeyword: null,
+                    file: file,
+                    lineNumber: lineNumber,
+                    columnNumber: 0,
+                    endLineNumber: 0,
+                    endColumnNumber: 0,
+                    message: message
+                );
+                return;
+                #pragma warning restore 618
+            }
+            var data = new BuildWarningEventArgs (
+                    subcategory: null,
+                    code: code,
+                    file: file,
+                    lineNumber: lineNumber,
                     columnNumber: 0,
                     endLineNumber: 0,
                     endColumnNumber: 0,
                     message: message,
                     helpKeyword: null,
                     senderName: null
-                ));
-                lock (_eventlock)
-                {
+            );
+            EnqueueMessage (warningMessageQueue, data, warningDataAvailable);
+        }
+
+        public void LogCustomBuildEvent (CustomBuildEventArgs e)
+        {
+            if (UIThreadId == Thread.CurrentThread.ManagedThreadId) {
+                #pragma warning disable 618
+                BuildEngine.LogCustomEvent (e);
+                return;
+                #pragma warning restore 618
+            }
+            EnqueueMessage (customMessageQueue, e, customDataAvailable);
+        }
+
+        public override bool Execute ()
+        {
+            WaitForCompletion ();
+            #pragma warning disable 618
+            return !Log.HasLoggedErrors;
+            #pragma warning restore 618
+        }
+
+        private void EnqueueMessage (Queue queue, object item, ManualResetEvent resetEvent)
+        {
+            lock (queue.SyncRoot) {
+                queue.Enqueue (item);
+                lock (_eventlock) {
                     if (isRunning)
-                        warningDataAvailable.Set();
+                        resetEvent.Set ();
                 }
             }
         }
 
-        void LogMessages()
+        private void LogInternal<T> (Queue queue, Action<T> action, ManualResetEvent resetEvent)
         {
-            lock (logMessageQueue.SyncRoot)
-            {
-                while (logMessageQueue.Count > 0)
-                {
-                    var args = (BuildMessageEventArgs)logMessageQueue.Dequeue();
-#pragma warning disable 618
-                    Log.LogMessage(args.Importance, args.Message);
-#pragma warning restore 618
+            lock (queue.SyncRoot) {
+                while (queue.Count > 0) {
+                    var args = (T)queue.Dequeue ();
+                    action (args);
                 }
-                logDataAvailable.Reset();
+                resetEvent.Reset ();
             }
         }
 
-        void LogErrors()
+        protected void Yield ()
         {
-            lock (errorMessageQueue.SyncRoot)
-            {
-                while (errorMessageQueue.Count > 0)
-                {
-                    var args = (BuildErrorEventArgs)errorMessageQueue.Dequeue();
-#pragma warning disable 618
-                    Log.LogError(string.Empty, args.Code, string.Empty, args.File, args.LineNumber, 0, 0, 0, args.Message);
-#pragma warning restore 618
-                }
-                errorDataAvailable.Reset();
-            }
+            if (YieldDuringToolExecution && BuildEngine is IBuildEngine3)
+                ((IBuildEngine3)BuildEngine).Yield ();
         }
 
-        void LogWarnings()
+        protected void Reacquire ()
         {
-            lock (warningMessageQueue.SyncRoot)
-            {
-                while (warningMessageQueue.Count > 0)
-                {
-                    var args = (BuildWarningEventArgs)warningMessageQueue.Dequeue();
-#pragma warning disable 618
-                    Log.LogWarning(args.Message);
-#pragma warning restore 618
-                }
-                warningDataAvailable.Reset();
-            }
+            if (YieldDuringToolExecution && BuildEngine is IBuildEngine3)
+                ((IBuildEngine3)BuildEngine).Reacquire ();
         }
 
-        /// <summary>
-        /// Waits for the task execution to complete.
-        /// </summary>
-        protected void WaitForCompletion()
+        protected void WaitForCompletion ()
         {
-            var handles = new WaitHandle[]
-            {
+            WaitHandle[] handles = new WaitHandle[] {
                 logDataAvailable,
                 errorDataAvailable,
                 warningDataAvailable,
+                customDataAvailable,
                 taskCancelled,
                 completed,
             };
-
-            if (YieldDuringToolExecution && BuildEngine is IBuildEngine3)
-                (BuildEngine as IBuildEngine3).Yield();
-
-            try
-            {
-                while (isRunning)
-                {
-                    var index = (WaitHandleIndex)WaitHandle.WaitAny(handles, TimeSpan.FromMilliseconds(10));
-                    switch (index)
-                    {
-                        case WaitHandleIndex.LogDataAvailable:
-                            LogMessages();
-                            break;
-                        case WaitHandleIndex.ErrorDataAvailable:
-                            LogErrors();
-                            break;
-                        case WaitHandleIndex.WarningDataAvailable:
-                            LogWarnings();
-                            break;
-                        case WaitHandleIndex.TaskCancelled:
-                            tcs.Cancel();
-                            isRunning = false;
-                            break;
-                        case WaitHandleIndex.Completed:
-                            isRunning = false;
-                            break;
+            try {
+                while (isRunning) {
+                    var index = (WaitHandleIndex)System.Threading.WaitHandle.WaitAny (handles, TimeSpan.FromMilliseconds (10));
+                    switch (index) {
+                    case WaitHandleIndex.LogDataAvailable:
+                        LogInternal<BuildMessageEventArgs> (logMessageQueue, (e) => {
+                            #pragma warning disable 618
+                            Log.LogMessage (e.Importance, e.Message);
+                            #pragma warning restore 618
+                        }, logDataAvailable);
+                        break;
+                    case WaitHandleIndex.ErrorDataAvailable:
+                        LogInternal<BuildErrorEventArgs> (errorMessageQueue, (e) => {
+                            #pragma warning disable 618
+                            Log.LogError (subcategory: null,
+                              errorCode: e.Code,
+                              helpKeyword: null,
+                              file: e.File,
+                              lineNumber: e.LineNumber,
+                              columnNumber: e.ColumnNumber,
+                              endLineNumber: e.EndLineNumber,
+                              endColumnNumber: e.EndColumnNumber,
+                              message: e.Message);
+                            #pragma warning restore 618
+                        }, errorDataAvailable); 
+                        break;
+                    case WaitHandleIndex.WarningDataAvailable:
+                        LogInternal<BuildWarningEventArgs> (warningMessageQueue, (e) => {
+                            #pragma warning disable 618
+                            Log.LogWarning (subcategory: null,
+                              warningCode: e.Code,
+                              helpKeyword: null,
+                              file: e.File,
+                              lineNumber: e.LineNumber,
+                              columnNumber: e.ColumnNumber,
+                              endLineNumber: e.EndLineNumber,
+                              endColumnNumber: e.EndColumnNumber,
+                              message: e.Message);
+                            #pragma warning restore 618
+                        }, warningDataAvailable);
+                        break;
+                    case WaitHandleIndex.CustomDataAvailable:
+                        LogInternal<CustomBuildEventArgs> (customMessageQueue, (e) => {
+                            BuildEngine.LogCustomEvent (e);
+                        }, customDataAvailable);
+                        break;
+                    case WaitHandleIndex.TaskCancelled:
+                        base.Cancel ();
+                        isRunning = false;
+                        break;
+                    case WaitHandleIndex.Completed:
+                        isRunning = false;
+                        break;
                     }
                 }
 
             }
-            finally
-            {
-                if (YieldDuringToolExecution && BuildEngine is IBuildEngine3)
-                    (BuildEngine as IBuildEngine3).Reacquire();
+            finally {
+
             }
         }
 
-        enum WaitHandleIndex
+       private enum WaitHandleIndex
         {
             LogDataAvailable,
             ErrorDataAvailable,
             WarningDataAvailable,
+            CustomDataAvailable,
             TaskCancelled,
             Completed,
         }
     }
 }
-
