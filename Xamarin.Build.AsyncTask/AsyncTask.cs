@@ -13,6 +13,7 @@ namespace Xamarin.Build
     /// </summary>
     public class AsyncTask : Task, ICancelableTask
     {
+        readonly CancellationTokenSource tcs = new CancellationTokenSource();
         readonly Queue logMessageQueue = new Queue();
         readonly Queue warningMessageQueue = new Queue();
         readonly Queue errorMessageQueue = new Queue();
@@ -32,6 +33,8 @@ namespace Xamarin.Build
         /// </summary>
         public bool YieldDuringToolExecution { get; set; }
 
+        public CancellationToken Token { get { return tcs.Token; } }
+
         protected string WorkingDirectory { get; private set; }
 
         [Obsolete("Do not use the Log.LogXXXX from within your Async task as it will Lock the Visual Studio UI. Use the this.LogXXXX methods instead.")]
@@ -47,7 +50,11 @@ namespace Xamarin.Build
             WorkingDirectory = Directory.GetCurrentDirectory();
         }
 
-        public void Cancel() => taskCancelled.Set();
+        public virtual void Cancel()
+        {
+            tcs.Cancel ();
+            taskCancelled.Set ();
+        }
 
         protected void Complete(System.Threading.Tasks.Task task)
         {
