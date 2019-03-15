@@ -7,8 +7,9 @@ using System.Collections;
 
 namespace Xamarin.Build
 {
-    public class CancelableTask : Task, ICancelableTask {
-        CancellationTokenSource tcs = new CancellationTokenSource ();
+    public class CancelableTask : Task, ICancelableTask
+    {
+        CancellationTokenSource tcs = new CancellationTokenSource();
 
         /// <summary>
         /// The cancellation token to notify the cancellation requests
@@ -18,12 +19,12 @@ namespace Xamarin.Build
         /// <summary>
         /// Requests cancellation of the task execution.
         /// </summary>
-        public virtual void Cancel ()
+        public virtual void Cancel()
         {
-            tcs.Cancel ();
+            tcs.Cancel();
         }
 
-        public override bool Execute ()
+        public override bool Execute()
         {
             return !Log.HasLoggedErrors;
         }
