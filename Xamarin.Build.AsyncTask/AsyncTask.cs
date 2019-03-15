@@ -4,8 +4,6 @@ using Microsoft.Build.Utilities;
 using Microsoft.Build.Framework;
 using System.Threading;
 using System.Collections;
-using System.Diagnostics;
-using System.Linq;
 
 namespace Xamarin.Build
 {
@@ -13,34 +11,21 @@ namespace Xamarin.Build
     /// Base class for tasks that need long-running cancellable asynchronous tasks 
     /// that don't block the UI thread in the IDE.
     /// </summary>
-    public class AsyncTask : CancelableTask
+    public class AsyncTask : Task, ICancelableTask
     {
-
-        Queue logMessageQueue = new Queue();
-        Queue warningMessageQueue = new Queue();
-        Queue errorMessageQueue = new Queue();
-        Queue customMessageQueue = new Queue();
-        ManualResetEvent logDataAvailable = new ManualResetEvent(false);
-        ManualResetEvent errorDataAvailable = new ManualResetEvent(false);
-        ManualResetEvent warningDataAvailable = new ManualResetEvent(false);
-        ManualResetEvent customDataAvailable = new ManualResetEvent(false);
-        ManualResetEvent taskCancelled = new ManualResetEvent(false);
-        ManualResetEvent completed = new ManualResetEvent(false);
+        readonly Queue logMessageQueue = new Queue();
+        readonly Queue warningMessageQueue = new Queue();
+        readonly Queue errorMessageQueue = new Queue();
+        readonly Queue customMessageQueue = new Queue();
+        readonly ManualResetEvent logDataAvailable = new ManualResetEvent(false);
+        readonly ManualResetEvent errorDataAvailable = new ManualResetEvent(false);
+        readonly ManualResetEvent warningDataAvailable = new ManualResetEvent(false);
+        readonly ManualResetEvent customDataAvailable = new ManualResetEvent(false);
+        readonly ManualResetEvent taskCancelled = new ManualResetEvent(false);
+        readonly ManualResetEvent completed = new ManualResetEvent(false);
         bool isRunning = true;
         object _eventlock = new object();
         int UIThreadId = 0;
-
-        protected struct OutputLine
-        {
-            public string Line;
-            public bool StdError;
-
-            public OutputLine(string line, bool stdError)
-            {
-                Line = line;
-                StdError = stdError;
-            }
-        }
 
         /// <summary>
         /// Indicates if the task will yield the node during tool execution.
@@ -50,10 +35,7 @@ namespace Xamarin.Build
         protected string WorkingDirectory { get; private set; }
 
         [Obsolete("Do not use the Log.LogXXXX from within your Async task as it will Lock the Visual Studio UI. Use the this.LogXXXX methods instead.")]
-        private new TaskLoggingHelper Log
-        {
-            get { return base.Log; }
-        }
+        private new TaskLoggingHelper Log => base.Log;
 
         /// <summary>
         /// Initializes the task.
@@ -65,10 +47,7 @@ namespace Xamarin.Build
             WorkingDirectory = Directory.GetCurrentDirectory();
         }
 
-        public override void Cancel()
-        {
-            taskCancelled.Set();
-        }
+        public void Cancel() => taskCancelled.Set();
 
         protected void Complete(System.Threading.Tasks.Task task)
         {
@@ -80,10 +59,7 @@ namespace Xamarin.Build
             Complete();
         }
 
-        public void Complete()
-        {
-            completed.Set();
-        }
+        public void Complete() => completed.Set();
 
         public void LogDebugTaskItems(string message, string[] items)
         {
@@ -107,25 +83,13 @@ namespace Xamarin.Build
                 LogDebugMessage("    {0}", item.ItemSpec);
         }
 
-        public void LogMessage(string message)
-        {
-            LogMessage(message, importance: MessageImportance.Normal);
-        }
+        public void LogMessage(string message) => LogMessage(message, importance: MessageImportance.Normal);
 
-        public void LogMessage(string message, params object[] messageArgs)
-        {
-            LogMessage(string.Format(message, messageArgs));
-        }
+        public void LogMessage(string message, params object[] messageArgs) => LogMessage(string.Format(message, messageArgs));
 
-        public void LogDebugMessage(string message)
-        {
-            LogMessage(message, importance: MessageImportance.Low);
-        }
+        public void LogDebugMessage(string message) => LogMessage(message, importance: MessageImportance.Low);
 
-        public void LogDebugMessage(string message, params object[] messageArgs)
-        {
-            LogMessage(string.Format(message, messageArgs), importance: MessageImportance.Low);
-        }
+        public void LogDebugMessage(string message, params object[] messageArgs) => LogMessage(string.Format(message, messageArgs), importance: MessageImportance.Low);
 
         public void LogMessage(string message, MessageImportance importance = MessageImportance.Normal)
         {
@@ -146,30 +110,15 @@ namespace Xamarin.Build
             EnqueueMessage(logMessageQueue, data, logDataAvailable);
         }
 
-        public void LogError(string message)
-        {
-            LogCodedError(code: null, message: message, file: null, lineNumber: 0);
-        }
+        public void LogError(string message) => LogCodedError(code: null, message: message, file: null, lineNumber: 0);
 
-        public void LogError(string message, params object[] messageArgs)
-        {
-            LogCodedError(code: null, message: string.Format(message, messageArgs));
-        }
+        public void LogError(string message, params object[] messageArgs) => LogCodedError(code: null, message: string.Format(message, messageArgs));
 
-        public void LogCodedError(string code, string message)
-        {
-            LogCodedError(code: code, message: message, file: null, lineNumber: 0);
-        }
+        public void LogCodedError(string code, string message) => LogCodedError(code: code, message: message, file: null, lineNumber: 0);
 
-        public void LogCodedError(string code, string message, params object[] messageArgs)
-        {
-            LogCodedError(code: code, message: string.Format(message, messageArgs), file: null, lineNumber: 0);
-        }
+        public void LogCodedError(string code, string message, params object[] messageArgs) => LogCodedError(code: code, message: string.Format(message, messageArgs), file: null, lineNumber: 0);
 
-        public void LogCodedError(string code, string file, int lineNumber, string message, params object[] messageArgs)
-        {
-            LogCodedError(code: code, message: string.Format(message, messageArgs), file: file, lineNumber: lineNumber);
-        }
+        public void LogCodedError(string code, string file, int lineNumber, string message, params object[] messageArgs) => LogCodedError(code: code, message: string.Format(message, messageArgs), file: file, lineNumber: lineNumber);
 
         public void LogCodedError(string code, string message, string file, int lineNumber)
         {
@@ -206,30 +155,15 @@ namespace Xamarin.Build
             EnqueueMessage(errorMessageQueue, data, errorDataAvailable);
         }
 
-        public void LogWarning(string message)
-        {
-            LogCodedWarning(code: null, message: message, file: null, lineNumber: 0);
-        }
+        public void LogWarning(string message) => LogCodedWarning(code: null, message: message, file: null, lineNumber: 0);
 
-        public void LogWarning(string message, params object[] messageArgs)
-        {
-            LogCodedWarning(code: null, message: string.Format(message, messageArgs));
-        }
+        public void LogWarning(string message, params object[] messageArgs) => LogCodedWarning(code: null, message: string.Format(message, messageArgs));
 
-        public void LogCodedWarning(string code, string message)
-        {
-            LogCodedWarning(code: code, message: message, file: null, lineNumber: 0);
-        }
+        public void LogCodedWarning(string code, string message) => LogCodedWarning(code: code, message: message, file: null, lineNumber: 0);
 
-        public void LogCodedWarning(string code, string message, params object[] messageArgs)
-        {
-            LogCodedWarning(code: code, message: string.Format(message, messageArgs), file: null, lineNumber: 0);
-        }
+        public void LogCodedWarning(string code, string message, params object[] messageArgs) => LogCodedWarning(code: code, message: string.Format(message, messageArgs), file: null, lineNumber: 0);
 
-        public void LogCodedWarning(string code, string file, int lineNumber, string message, params object[] messageArgs)
-        {
-            LogCodedWarning(code: code, message: string.Format(message, messageArgs), file: file, lineNumber: lineNumber);
-        }
+        public void LogCodedWarning(string code, string file, int lineNumber, string message, params object[] messageArgs) => LogCodedWarning(code: code, message: string.Format(message, messageArgs), file: file, lineNumber: lineNumber);
 
         public void LogCodedWarning(string code, string message, string file, int lineNumber)
         {
@@ -387,7 +321,7 @@ namespace Xamarin.Build
                             }, customDataAvailable);
                             break;
                         case WaitHandleIndex.TaskCancelled:
-                            base.Cancel();
+                            Cancel();
                             isRunning = false;
                             break;
                         case WaitHandleIndex.Completed:
