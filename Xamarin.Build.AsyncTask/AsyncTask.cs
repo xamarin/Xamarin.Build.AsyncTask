@@ -5,19 +5,6 @@ using System.Threading;
 using System.Collections;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
-
-// Keep AssemblyVersion constant and pointing to the base version, which is the "release", so to speak.
-[assembly: AssemblyVersion(ThisAssembly.Git.BaseVersion.Major + "." + ThisAssembly.Git.BaseVersion.Minor + "." + ThisAssembly.Git.BaseVersion.Patch)]
-// FileVersion and InformationalVersion hold the "right" values but don't mess with fusion.
-[assembly: AssemblyFileVersion(ThisAssembly.Git.SemVer.Major + "." + ThisAssembly.Git.SemVer.Minor + "." + ThisAssembly.Git.SemVer.Patch)]
-// Full metadata about branch and commit is always useful.
-[assembly: AssemblyInformationalVersion(
-  ThisAssembly.Git.SemVer.Major + "." +
-  ThisAssembly.Git.SemVer.Minor + "." +
-  ThisAssembly.Git.SemVer.Patch + "-" +
-  ThisAssembly.Git.Branch + "+" +
-  ThisAssembly.Git.Commit)]
 
 namespace Xamarin.Build
 {
