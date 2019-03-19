@@ -8,6 +8,6 @@
     ==============================================================
     -->
   <PropertyGroup>
-    <AsyncTask>$(MSBuildThisFileDirectory)..\lib\netstandard2.0\Xamarin.Build.AsyncTask.dll</AsyncTask>
+    <AsyncTask>$(MSBuildThisFileDirectory)..\lib\netstandard1.3\Xamarin.Build.AsyncTask.dll</AsyncTask>
   </PropertyGroup>
 </Project>
