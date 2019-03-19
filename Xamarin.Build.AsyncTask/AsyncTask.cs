@@ -13,6 +13,7 @@ namespace Xamarin.Build
     /// </summary>
     public class AsyncTask : Task, ICancelableTask
     {
+        readonly CancellationTokenSource cts = new CancellationTokenSource();
         readonly Queue logMessageQueue = new Queue();
         readonly Queue warningMessageQueue = new Queue();
         readonly Queue errorMessageQueue = new Queue();
@@ -24,14 +25,23 @@ namespace Xamarin.Build
         readonly ManualResetEvent taskCancelled = new ManualResetEvent(false);
         readonly ManualResetEvent completed = new ManualResetEvent(false);
         bool isRunning = true;
-        object _eventlock = new object();
-        int UIThreadId = 0;
+        object eventlock = new object();
+        int uiThreadId = 0;
 
         /// <summary>
         /// Indicates if the task will yield the node during tool execution.
         /// </summary>
         public bool YieldDuringToolExecution { get; set; }
 
+        /// <summary>
+        /// The cancellation token to notify the cancellation requests
+        /// </summary>
+        public CancellationToken CancellationToken => cts.Token;
+
+        /// <summary>
+        /// Gets the current working directory for the task, which is captured at task 
+        /// creation time from <see cref="Directory.GetCurrentDirectory"/>.
+        /// </summary>
         protected string WorkingDirectory { get; private set; }
 
         [Obsolete("Do not use the Log.LogXXXX from within your Async task as it will Lock the Visual Studio UI. Use the this.LogXXXX methods instead.")]
@@ -43,8 +53,8 @@ namespace Xamarin.Build
         public AsyncTask()
         {
             YieldDuringToolExecution = false;
-            UIThreadId = Thread.CurrentThread.ManagedThreadId;
             WorkingDirectory = Directory.GetCurrentDirectory();
+            uiThreadId = Thread.CurrentThread.ManagedThreadId;
         }
 
         public void Cancel() => taskCancelled.Set();
@@ -93,7 +103,7 @@ namespace Xamarin.Build
 
         public void LogMessage(string message, MessageImportance importance = MessageImportance.Normal)
         {
-            if (UIThreadId == Thread.CurrentThread.ManagedThreadId)
+            if (uiThreadId == Thread.CurrentThread.ManagedThreadId)
             {
 #pragma warning disable 618
                 Log.LogMessage(importance, message);
@@ -122,7 +132,7 @@ namespace Xamarin.Build
 
         public void LogCodedError(string code, string message, string file, int lineNumber)
         {
-            if (UIThreadId == Thread.CurrentThread.ManagedThreadId)
+            if (uiThreadId == Thread.CurrentThread.ManagedThreadId)
             {
 #pragma warning disable 618
                 Log.LogError(
@@ -167,7 +177,7 @@ namespace Xamarin.Build
 
         public void LogCodedWarning(string code, string message, string file, int lineNumber)
         {
-            if (UIThreadId == Thread.CurrentThread.ManagedThreadId)
+            if (uiThreadId == Thread.CurrentThread.ManagedThreadId)
             {
 #pragma warning disable 618
                 Log.LogWarning(
@@ -201,7 +211,7 @@ namespace Xamarin.Build
 
         public void LogCustomBuildEvent(CustomBuildEventArgs e)
         {
-            if (UIThreadId == Thread.CurrentThread.ManagedThreadId)
+            if (uiThreadId == Thread.CurrentThread.ManagedThreadId)
             {
 #pragma warning disable 618
                 BuildEngine.LogCustomEvent(e);
@@ -224,7 +234,7 @@ namespace Xamarin.Build
             lock (queue.SyncRoot)
             {
                 queue.Enqueue(item);
-                lock (_eventlock)
+                lock (eventlock)
                 {
                     if (isRunning)
                         resetEvent.Set();
@@ -322,6 +332,7 @@ namespace Xamarin.Build
                             break;
                         case WaitHandleIndex.TaskCancelled:
                             Cancel();
+                            cts.Cancel();
                             isRunning = false;
                             break;
                         case WaitHandleIndex.Completed:
