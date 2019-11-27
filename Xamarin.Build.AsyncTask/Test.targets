@@ -3,10 +3,13 @@
   <PropertyGroup>
     <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
   </PropertyGroup>
-
+  <UsingTask TaskName="Xamarin.Build.WaitForBackgroundTasks" AssemblyFile="$(OutputPath)$(AssemblyName).dll" />
   <Target Name="Test" >
     <Error Condition="!Exists('$(OutputPath)$(AssemblyName).dll')" Text="Run Build first. '$(OutputPath)$(AssemblyName).dll' not found." />
     <AsyncMessage Text="Hello Async World!" />
+    <LongTask Category="default" IsBackgroundTask="True" Text="Hello LogTask World!" />
+    <WaitForBackgroundTasks Categories="default" />
+    <LongTask Category="background" IsBackgroundTask="True" Text="Hello LogTask World Again!" />
   </Target>
 
   <UsingTask TaskName="AsyncMessage" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
@@ -28,11 +31,46 @@
           {
             System.Threading.Tasks.Task.Run(async () =>
             {
-              await System.Threading.Tasks.Task.Delay(5000);
+              await System.Threading.Tasks.Task.Delay(500);
               LogMessage(Text);
 	            Complete();
             });            
 
+            return base.Execute();
+          }
+        }
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+  
+  <UsingTask TaskName="LongTask" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Category />
+      <IsBackgroundTask ParameterType="System.Boolean"/>
+      <Text Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Reference Include="$(OutputPath)$(AssemblyName).dll" />
+      <Reference Include="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll"/>
+      <Reference Include="$(MSBuildToolsPath)\Microsoft.Build.Utilities.Core.dll"/>
+      <Reference Include="System.Threading.Tasks"/>
+      <Code Type="Class" Language="cs">
+        <![CDATA[
+        public class LongTask : Xamarin.Build.AsyncTask
+        {
+          public string Text { get; set; }
+
+          public override bool Execute()
+          {
+            var task = System.Threading.Tasks.Task.Run(async () =>
+            {
+              await System.Threading.Tasks.Task.Delay(1000);
+              LogMessage(Text);
+              LogWarning("A Sample Warning.");
+              Complete ();
+            });
+            
             return base.Execute();
           }
         }
