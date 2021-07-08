@@ -4,6 +4,9 @@ using Microsoft.Build.Utilities;
 using Microsoft.Build.Framework;
 using System.Threading;
 using System.Collections;
+using System.Reflection;
+
+[assembly:AssemblyKeyFileAttribute ("product.snk")]
 
 namespace Xamarin.Build
 {
