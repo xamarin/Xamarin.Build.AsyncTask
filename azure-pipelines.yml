@@ -3,8 +3,15 @@ trigger:
     include:
       - main
       - refs/tags/*
-
+resources:
+  repositories:
+    - repository: internal-templates
+      type: github
+      name: xamarin/yaml-templates
+      endpoint: xamarin
+      ref: refs/heads/main
 variables:
+  - group: Xamarin-Secrets
   - name: Configuration
     value: Release
 
@@ -46,3 +53,12 @@ stages:
         inputs:
           artifactName: 'nuget'
           pathtoPublish: $(Build.ArtifactStagingDirectory)
+
+  - stage: Publish
+    dependsOn: Build
+    condition: eq(variables['System.TeamProject'], 'devdiv') # only sign the packages when running on Windows, and using the private server which has the certificates
+    jobs:
+    - template: sign-artifacts/jobs/v2.yml@internal-templates
+      parameters:
+        signListPath: 'SignList.xml'
+        condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/')
