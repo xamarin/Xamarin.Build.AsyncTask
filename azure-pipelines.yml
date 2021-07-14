@@ -1,0 +1,48 @@
+trigger:
+  branches:
+    include:
+      - main
+      - refs/tags/*
+
+variables:
+  - name: Configuration
+    value: Release
+
+stages:
+  - stage: Build
+    jobs:
+    - job: buildWindows
+      pool:
+        vmImage: windows-latest
+      variables:
+        LogDirectory: $(Build.ArtifactStagingDirectory)\logs
+      steps:
+      - powershell: |
+          & dotnet build Xamarin.Build.AsyncTask\Xamarin.Build.AsyncTask.csproj -c Debug   -bl:$(LogDirectory)\Debug.binlog
+          & dotnet build Xamarin.Build.AsyncTask\Xamarin.Build.AsyncTask.csproj -c Release -bl:$(LogDirectory)\Release.binlog
+        displayName: build libraries
+        errorActionPreference: stop
+      - powershell: |
+          & dotnet pack Xamarin.Build.AsyncTask\Xamarin.Build.AsyncTask.csproj -c Release -bl:$(LogDirectory)\PackRelease.binlog
+        displayName: pack NuGet
+        errorActionPreference: stop
+      - task: CopyFiles@2
+        displayName: Copy nupkg
+        inputs:
+          contents: '*.nupkg'
+          targetFolder: $(Build.ArtifactStagingDirectory)
+      - task: CopyFiles@2
+        displayName: Copy SignList
+        inputs:
+          contents: 'SignList.xml'
+          targetFolder: $(Build.ArtifactStagingDirectory)
+      - task: CopyFiles@2
+        displayName: Copy snupkg
+        inputs:
+          contents: '*.snupkg'
+          targetFolder: $(Build.ArtifactStagingDirectory)
+      - task: PublishBuildArtifacts@1
+        displayName: upload artifacts
+        inputs:
+          artifactName: 'nuget'
+          pathtoPublish: $(Build.ArtifactStagingDirectory)
