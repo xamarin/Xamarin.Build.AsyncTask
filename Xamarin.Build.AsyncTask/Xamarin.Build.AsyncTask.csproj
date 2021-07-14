@@ -7,7 +7,7 @@
     <NoWarn>1701;1702;1705;1591</NoWarn>
 
     <PackageId>Xamarin.Build.AsyncTask</PackageId>
-    <PackageVersion>0.3.0</PackageVersion>
+    <PackageVersion>0.4.0</PackageVersion>
 
     <Title>$(PackageId)</Title>
     <Description>$(PackageId)</Description>
@@ -19,7 +19,7 @@
     <PackageLicenseUrl>https://raw.githubusercontent.com/xamarin/Xamarin.Build.AsyncTask/master/LICENSE</PackageLicenseUrl>
     <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
 
-    <PackOnBuild>true</PackOnBuild>
+    <PackOnBuild>false</PackOnBuild>
     <InferPackageContents>false</InferPackageContents>
   </PropertyGroup>
 
