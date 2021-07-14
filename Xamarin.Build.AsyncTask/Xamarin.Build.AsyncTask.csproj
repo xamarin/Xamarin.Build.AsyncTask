@@ -19,7 +19,7 @@
     <PackageLicenseUrl>https://raw.githubusercontent.com/xamarin/Xamarin.Build.AsyncTask/master/LICENSE</PackageLicenseUrl>
     <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
 
-    <PackOnBuild>true</PackOnBuild>
+    <PackOnBuild>false</PackOnBuild>
     <InferPackageContents>false</InferPackageContents>
   </PropertyGroup>
 
