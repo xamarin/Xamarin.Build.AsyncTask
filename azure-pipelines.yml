@@ -20,7 +20,9 @@ stages:
     jobs:
     - job: buildWindows
       pool:
-        vmImage: windows-latest
+        name: AzurePipelines-EO
+        demands:
+        - ImageOverride -equals AzurePipelinesWindows2022compliant
       variables:
         LogDirectory: $(Build.ArtifactStagingDirectory)\logs
       steps:
