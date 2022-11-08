@@ -14,6 +14,8 @@ variables:
   - group: Xamarin-Secrets
   - name: Configuration
     value: Release
+  - name: Codeql.Enabled
+    value: True
 
 stages:
   - stage: Build
