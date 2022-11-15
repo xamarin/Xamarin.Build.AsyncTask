@@ -28,7 +28,6 @@ stages:
       variables:
         LogDirectory: $(Build.ArtifactStagingDirectory)\logs
       steps:
-      - task: CodeQL3000Init@0
       - powershell: |
           & dotnet build Xamarin.Build.AsyncTask\Xamarin.Build.AsyncTask.csproj -c Debug   -bl:$(LogDirectory)\Debug.binlog
           & dotnet build Xamarin.Build.AsyncTask\Xamarin.Build.AsyncTask.csproj -c Release -bl:$(LogDirectory)\Release.binlog
@@ -53,7 +52,6 @@ stages:
         inputs:
           artifactName: 'nuget'
           pathtoPublish: $(Build.ArtifactStagingDirectory)
-      - task: CodeQL3000Finalize@0
 
   - stage: Publish
     dependsOn: Build
