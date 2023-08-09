@@ -35,7 +35,7 @@
     <PackageReference Include="MSBuilder.ThisAssembly.Metadata" Version="0.1.4" PrivateAssets="all" />
     <PackageReference Include="System.Diagnostics.StackTrace" Version="4.3.0" PrivateAssets="all" />
     <PackageReference Include="NuGet.Build.Packaging" Version="*" PrivateAssets="all" />
-    <PackageReference Include="GitInfo" Version="*" PrivateAssets="all" />
+    <PackageReference Include="GitInfo" Version="2.2.0" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
