@@ -54,26 +54,11 @@ AssemblyVersion=$(AssemblyVersion)" />
 
   <Target Name="AddVersionMetadata" DependsOnTargets="GetAssemblyVersion" BeforeTargets="GenerateThisAssemblyMetadata">
     <ItemGroup>
-      <AssemblyAttribute Include="System.Reflection.AssemblyMetadata">
-        <_Parameter1>Version</_Parameter1>
-        <_Parameter2>$(Version)</_Parameter2>
-      </AssemblyAttribute>
-      <AssemblyAttribute Include="System.Reflection.AssemblyMetadata">
-        <_Parameter1>PackageVersion</_Parameter1>
-        <_Parameter2>$(PackageVersion)</_Parameter2>
-      </AssemblyAttribute>
-      <AssemblyAttribute Include="System.Reflection.AssemblyMetadata">
-        <_Parameter1>AssemblyVersion</_Parameter1>
-        <_Parameter2>$(AssemblyVersion)</_Parameter2>
-      </AssemblyAttribute>
-      <AssemblyAttribute Include="System.Reflection.AssemblyMetadata">
-        <_Parameter1>FileVersion</_Parameter1>
-        <_Parameter2>$(FileVersion)</_Parameter2>
-      </AssemblyAttribute>
-      <AssemblyAttribute Include="System.Reflection.AssemblyMetadata">
-        <_Parameter1>InformationalVersion</_Parameter1>
-        <_Parameter2>$(InformationalVersion)</_Parameter2>
-      </AssemblyAttribute>
+      <AssemblyMetadata Include="Version" Value="$(Version)" />
+      <AssemblyMetadata Include="PackageVersion" Value="$(PackageVersion)" />
+      <AssemblyMetadata Include="AssemblyVersion" Value="$(AssemblyVersion)" />
+      <AssemblyMetadata Include="FileVersion" Value="$(FileVersion)" />
+      <AssemblyMetadata Include="InformationalVersion" Value="$(InformationalVersion)" />
     </ItemGroup>
   </Target>
 
