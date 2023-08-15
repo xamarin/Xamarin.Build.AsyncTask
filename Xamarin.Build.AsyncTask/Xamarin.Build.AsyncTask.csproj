@@ -32,7 +32,10 @@
     <PackageReference Include="Microsoft.Build.Tasks.Core" Version="15.6.82" />
     <PackageReference Include="Microsoft.Build.Utilities.Core" Version="15.6.82" />
 
-    <PackageReference Include="MSBuilder.ThisAssembly.Metadata" Version="0.1.4" PrivateAssets="all" />
+    <PackageReference Include="ThisAssembly.Metadata" Version="1.4.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="System.Diagnostics.StackTrace" Version="4.3.0" PrivateAssets="all" />
     <PackageReference Include="NuGet.Build.Packaging" Version="*" PrivateAssets="all" />
     <PackageReference Include="GitInfo" Version="2.2.0" PrivateAssets="all" />
