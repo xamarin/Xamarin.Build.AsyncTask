@@ -70,6 +70,10 @@ extends:
           displayName: build libraries
           errorActionPreference: stop
         - powershell: |
+            & dotnet build Xamarin.Build.AsyncTask\Xamarin.Build.AsyncTask.csproj -c Release -t:Test -bl:$(LogDirectory)\Test.binlog
+          displayName: test libraries
+          errorActionPreference: stop
+        - powershell: |
             & dotnet pack Xamarin.Build.AsyncTask\Xamarin.Build.AsyncTask.csproj -c Release -bl:$(LogDirectory)\PackRelease.binlog
           displayName: pack NuGet
           errorActionPreference: stop
