@@ -91,5 +91,6 @@ extends:
       - template: sign-artifacts/jobs/v2.yml@internal-templates
         parameters:
           signListPath: 'SignList.xml'
+          signType: Real
           usePipelineArtifactTasks: true
           use1ESTemplate: true
