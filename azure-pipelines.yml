@@ -3,6 +3,7 @@ trigger:
     include:
       - main
       - refs/tags/*
+
 resources:
   repositories:
     - repository: internal-templates
@@ -10,54 +11,86 @@ resources:
       name: xamarin/yaml-templates
       endpoint: xamarin
       ref: refs/heads/main
+    - repository: 1esPipelines
+      type: git
+      name: 1ESPipelineTemplates/1ESPipelineTemplates
+      ref: refs/tags/release
+
+parameters:
+- name: Skip1ESComplianceTasks
+  default: false
+- name: SignArtifacts
+  default: false
+
 variables:
-  - group: Xamarin-Secrets
-  - name: Configuration
-    value: Release
-  - name: Codeql.Enabled
-    value: True
+- group: Xamarin-Secrets
+- name: Configuration
+  value: Release
+- name: WindowsPoolImage1ESPT
+  value: 1ESPT-Windows2022
 
-stages:
-  - stage: Build
-    jobs:
-    - job: buildWindows
-      pool:
+extends:
+  ${{ if or(eq(variables['Build.Reason'], 'PullRequest'), eq('${{ parameters.Skip1ESComplianceTasks }}', 'true')) }}:
+    template: v1/1ES.Unofficial.PipelineTemplate.yml@1esPipelines
+  ${{ else }}:
+    template: v1/1ES.Official.PipelineTemplate.yml@1esPipelines
+  parameters:
+    sdl:
+      ${{ if eq('${{ parameters.Skip1ESComplianceTasks }}', 'true') }}:
+        enableAllTools: false
+      binskim:
+        scanOutputDirectoryOnly: true
+      codeql:
+        runSourceLanguagesInSourceAnalysis: true
+      sourceAnalysisPool:
         name: AzurePipelines-EO
-        demands:
-        - ImageOverride -equals AzurePipelinesWindows2019compliant
-      variables:
-        LogDirectory: $(Build.ArtifactStagingDirectory)\logs
-      steps:
-      - powershell: |
-          & dotnet build Xamarin.Build.AsyncTask\Xamarin.Build.AsyncTask.csproj -c Debug   -bl:$(LogDirectory)\Debug.binlog
-          & dotnet build Xamarin.Build.AsyncTask\Xamarin.Build.AsyncTask.csproj -c Release -bl:$(LogDirectory)\Release.binlog
-        displayName: build libraries
-        errorActionPreference: stop
-      - powershell: |
-          & dotnet pack Xamarin.Build.AsyncTask\Xamarin.Build.AsyncTask.csproj -c Release -bl:$(LogDirectory)\PackRelease.binlog
-        displayName: pack NuGet
-        errorActionPreference: stop
-      - task: CopyFiles@2
-        displayName: Copy nupkg
-        inputs:
-          contents: '**/*.*nupkg'
-          targetFolder: $(Build.ArtifactStagingDirectory)
-      - task: CopyFiles@2
-        displayName: Copy SignList
-        inputs:
-          contents: 'SignList.xml'
-          targetFolder: $(Build.ArtifactStagingDirectory)
-      - task: PublishBuildArtifacts@1
-        displayName: upload artifacts
-        inputs:
-          artifactName: 'nuget'
-          pathtoPublish: $(Build.ArtifactStagingDirectory)
+        image: $(WindowsPoolImage1ESPT)
+        os: windows
+    stages:
+    - stage: Build
+      jobs:
+      - job: buildWindows
+        pool:
+          name: AzurePipelines-EO
+          image: $(WindowsPoolImage1ESPT)
+          os: windows
+        variables:
+          LogDirectory: $(Build.ArtifactStagingDirectory)\logs
+          Codeql.Enabled: true
+        templateContext:
+          outputs:
+          - output: pipelineArtifact
+            displayName: upload artifacts
+            artifactName: nuget
+            targetPath: $(Build.ArtifactStagingDirectory)
+        steps:
+        - powershell: |
+            & dotnet build Xamarin.Build.AsyncTask\Xamarin.Build.AsyncTask.csproj -c Debug   -bl:$(LogDirectory)\Debug.binlog
+            & dotnet build Xamarin.Build.AsyncTask\Xamarin.Build.AsyncTask.csproj -c Release -bl:$(LogDirectory)\Release.binlog
+          displayName: build libraries
+          errorActionPreference: stop
+        - powershell: |
+            & dotnet pack Xamarin.Build.AsyncTask\Xamarin.Build.AsyncTask.csproj -c Release -bl:$(LogDirectory)\PackRelease.binlog
+          displayName: pack NuGet
+          errorActionPreference: stop
+        - task: CopyFiles@2
+          displayName: Copy nupkg
+          inputs:
+            contents: '**/*.*nupkg'
+            targetFolder: $(Build.ArtifactStagingDirectory)
+        - task: CopyFiles@2
+          displayName: Copy SignList
+          inputs:
+            contents: 'SignList.xml'
+            targetFolder: $(Build.ArtifactStagingDirectory)
 
-  - stage: Publish
-    dependsOn: Build
-    condition: eq(variables['System.TeamProject'], 'devdiv') # only sign the packages when running on Windows, and using the private server which has the certificates
-    jobs:
-    - template: sign-artifacts/jobs/v2.yml@internal-templates
-      parameters:
-        signListPath: 'SignList.xml'
-        condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/')
+    - stage: Sign
+      dependsOn: Build
+      condition: and(eq(dependencies.Build.result, 'Succeeded'), eq(variables['System.TeamProject'], 'devdiv'), or(startsWith(variables['Build.SourceBranch'], 'refs/tags/'), eq('${{ parameters.SignArtifacts }}', 'true'))) # only sign the packages when running on Windows, and using the private server which has the certificates
+      jobs:
+      - template: sign-artifacts/jobs/v2.yml@internal-templates
+        parameters:
+          signListPath: 'SignList.xml'
+          signType: Real
+          usePipelineArtifactTasks: true
+          use1ESTemplate: true
