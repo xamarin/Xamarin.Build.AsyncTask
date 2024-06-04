@@ -5,13 +5,14 @@ If you're creating a custom task library, just inherit from Xamarin.Build.AsyncT
 If you're creating an inline task that wants to inherit from AsyncTask, use the following 
 as a template:
 
-  <UsingTask TaskName="MyAsyncTask" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+  <UsingTask TaskName="MyAsyncTask" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
     <ParameterGroup>
       <!-- TODO: your task parameters -->
     </ParameterGroup>
     <Task>
       <Reference Include="$(AsyncTask)" />
-      <Reference Include="System.Threading.Tasks"/>
+      <Reference Include="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll"/>
+      <Reference Include="$(MSBuildToolsPath)\Microsoft.Build.Utilities.Core.dll"/>
       <Code Type="Class" Language="cs">
         <![CDATA[
         public class MyAsyncTask : Xamarin.Build.AsyncTask
