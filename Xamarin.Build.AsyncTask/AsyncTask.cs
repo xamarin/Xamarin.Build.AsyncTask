@@ -4,6 +4,7 @@ using Microsoft.Build.Utilities;
 using Microsoft.Build.Framework;
 using System.Threading;
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 
 [assembly:AssemblyKeyFileAttribute ("product.snk")]
@@ -21,10 +22,12 @@ namespace Xamarin.Build
         readonly Queue warningMessageQueue = new Queue();
         readonly Queue errorMessageQueue = new Queue();
         readonly Queue customMessageQueue = new Queue();
+        readonly Queue telemetryMessageQueue = new Queue ();
         readonly ManualResetEvent logDataAvailable = new ManualResetEvent(false);
         readonly ManualResetEvent errorDataAvailable = new ManualResetEvent(false);
         readonly ManualResetEvent warningDataAvailable = new ManualResetEvent(false);
         readonly ManualResetEvent customDataAvailable = new ManualResetEvent(false);
+        readonly ManualResetEvent telemetryDataAvailable = new ManualResetEvent(false);
         readonly ManualResetEvent taskCancelled = new ManualResetEvent(false);
         readonly ManualResetEvent completed = new ManualResetEvent(false);
         bool isRunning = true;
@@ -94,6 +97,23 @@ namespace Xamarin.Build
 
             foreach (var item in items)
                 LogDebugMessage("    {0}", item.ItemSpec);
+        }
+
+        public void LogTelemetry(string eventName, IDictionary<string, string> properties)
+        {
+            if (uiThreadId == Thread.CurrentThread.ManagedThreadId)
+            {
+#pragma warning disable 618
+                Log.LogTelemetry(eventName, properties);
+                return;
+#pragma warning restore 618
+            }
+
+            var data = new TelemetryEventArgs() {
+                    EventName = eventName,
+                    Properties = properties
+            };
+            EnqueueMessage(telemetryMessageQueue, data, telemetryDataAvailable);
         }
 
         public void LogMessage(string message) => LogMessage(message, importance: MessageImportance.Normal);
@@ -277,6 +297,7 @@ namespace Xamarin.Build
                 errorDataAvailable,
                 warningDataAvailable,
                 customDataAvailable,
+                telemetryDataAvailable,
                 taskCancelled,
                 completed,
             };
@@ -333,6 +354,11 @@ namespace Xamarin.Build
                                 BuildEngine.LogCustomEvent(e);
                             }, customDataAvailable);
                             break;
+                        case WaitHandleIndex.TelemetryDataAvailable:
+                            LogInternal<TelemetryEventArgs>(telemetryMessageQueue, (e) => {
+                                BuildEngine5.LogTelemetry(e.EventName, e.Properties);
+                            }, telemetryDataAvailable);
+                            break;
                         case WaitHandleIndex.TaskCancelled:
                             Cancel();
                             cts.Cancel();
@@ -357,6 +383,7 @@ namespace Xamarin.Build
             ErrorDataAvailable,
             WarningDataAvailable,
             CustomDataAvailable,
+            TelemetryDataAvailable,
             TaskCancelled,
             Completed,
         }
