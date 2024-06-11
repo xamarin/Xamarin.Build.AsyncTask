@@ -75,6 +75,14 @@ namespace Xamarin.Build
             Complete();
         }
 
+        public string Category { get; set; } = BackgroundTaskManager.DefaultCategory;
+
+        public bool IsBackgroundTask { get; set; } = false;
+
+        public bool IsComplete {
+            get { return cts.IsCancellationRequested || completed.WaitOne (0) || taskCancelled.WaitOne (0); }
+        }
+
         public void Complete() => completed.Set();
 
         public void LogDebugTaskItems(string message, string[] items)
@@ -246,7 +254,16 @@ namespace Xamarin.Build
 
         public override bool Execute()
         {
-            WaitForCompletion();
+            if (IsBackgroundTask)
+            {
+                LogMessage ($"Backgrounding {this.GetType ()}");
+                var manager = BackgroundTaskManager.GetTaskManager (BuildEngine4);
+                manager.RegisterTask (this, Category);
+#pragma warning disable 618
+                return !Log.HasLoggedErrors;
+#pragma warning restore 618
+            }
+            WaitForCompletion ();
 #pragma warning disable 618
             return !Log.HasLoggedErrors;
 #pragma warning restore 618
@@ -259,7 +276,7 @@ namespace Xamarin.Build
                 queue.Enqueue(item);
                 lock (eventlock)
                 {
-                    if (isRunning)
+                    if (isRunning && !IsBackgroundTask)
                         resetEvent.Set();
                 }
             }
@@ -290,7 +307,38 @@ namespace Xamarin.Build
                 ((IBuildEngine3)BuildEngine).Reacquire();
         }
 
-        protected void WaitForCompletion()
+        /// <summary>
+        /// Wait for a Task which was flagged with `IsBackgroundTask`.
+        /// </summary>
+        /// <param name="buildEngine">The buildEngine to use to log any messages the task has pending.</param>
+        internal void Wait (IBuildEngine buildEngine)
+        {
+            WaitForCompletion ();
+            if (logMessageQueue.Count > 0) {
+                while (logMessageQueue.Count > 0)
+                {
+                    BuildMessageEventArgs e = (BuildMessageEventArgs)logMessageQueue.Dequeue();
+                    buildEngine.LogMessageEvent(e);
+                }
+            }
+            if (warningMessageQueue.Count > 0)
+            {
+                while (warningMessageQueue.Count > 0)
+                {
+                    BuildWarningEventArgs e = (BuildWarningEventArgs)warningMessageQueue.Dequeue();
+                    buildEngine.LogWarningEvent(e);
+                }
+            }
+            if (errorMessageQueue.Count > 0) {
+                while (errorMessageQueue.Count > 0)
+                {
+                    BuildErrorEventArgs e = (BuildErrorEventArgs)errorMessageQueue.Dequeue();
+                    buildEngine.LogErrorEvent(e);
+                }
+            }
+        }
+
+        internal protected void WaitForCompletion()
         {
             WaitHandle[] handles = new WaitHandle[] {
                 logDataAvailable,
